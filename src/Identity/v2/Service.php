@@ -24,13 +24,20 @@ class Service extends AbstractService implements IdentityService
 
     public function authenticate(array $options = []): array
     {
+
         $definition = $this->api->postToken();
+        $authOptions = array_intersect_key($options, $definition['params']);
+        if (!empty($options['cachedToken'])) {
+            $token = $this->generateTokenFromCache($options['cachedToken']);
 
-        $response = $this->execute($definition, array_intersect_key($options, $definition['params']));
+            if ($token->hasExpired()) {
+                throw new \RuntimeException(sprintf('Cached token has expired on "%s".', $token->expires->format(\DateTime::ISO8601)));
+            }
+        } else {
+            $token = $this->generateToken($authOptions);
+        }
 
-        $token = $this->model(Token::class, $response);
-
-        $serviceUrl = $this->model(Catalog::class, $response)->getServiceUrl(
+        $serviceUrl = $this->model(Catalog::class, $this->execute($definition, $authOptions))->getServiceUrl(
             $options['catalogName'],
             $options['catalogType'],
             $options['region'],
@@ -53,4 +60,11 @@ class Service extends AbstractService implements IdentityService
 
         return $this->model(Token::class, $response);
     }
+
+    public function generateTokenFromCache(array $cachedToken = []): Token
+    {
+        return $this->model(Token::class)->populateFromArray($cachedToken);
+    }
+
+
 }

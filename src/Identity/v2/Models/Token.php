@@ -26,6 +26,9 @@ class Token extends OperatorResource implements \OpenStack\Common\Auth\Token
     /** @var Tenant */
     public $tenant;
 
+    /** @var array */
+    protected $cachedToken;
+
     /**
      * {@inheritdoc}
      */
@@ -43,7 +46,10 @@ class Token extends OperatorResource implements \OpenStack\Common\Auth\Token
      */
     public function populateFromResponse(ResponseInterface $response): self
     {
-        $this->populateFromArray(Utils::jsonDecode($response)['access']['token']);
+        parent::populateFromResponse($response);
+        $this->cachedToken = Utils::jsonDecode($response)['access']['token'];
+
+        $this->populateFromArray($this->cachedToken);
 
         return $this;
     }
@@ -56,5 +62,10 @@ class Token extends OperatorResource implements \OpenStack\Common\Auth\Token
     public function hasExpired(): bool
     {
         return $this->expires <= new \DateTimeImmutable('now', $this->expires->getTimezone());
+    }
+
+    public function export(): array
+    {
+        return $this->cachedToken;
     }
 }
