@@ -37,12 +37,13 @@ class Service extends AbstractService implements IdentityService
             $token = $this->generateToken($authOptions);
         }
 
-        $serviceUrl = $this->model(Catalog::class, $this->execute($definition, $authOptions))->getServiceUrl(
-            $options['catalogName'],
-            $options['catalogType'],
-            $options['region'],
-            $options['urlType']
-        );
+        if (!empty($options['cachedCatalog'])) {
+            $catalog = $this->generateCatalogFromCache($options['cachedCatalog']);
+        } else {
+            $catalog = $this->generateCatalog($options);
+        }
+
+        $serviceUrl = $this->getServiceUrl($catalog, $options);
 
         return [$token, $serviceUrl];
     }
@@ -56,14 +57,40 @@ class Service extends AbstractService implements IdentityService
      */
     public function generateToken(array $options = []): Token
     {
-        $response = $this->execute($this->api->postToken(), $options);
+        return $this->model(Token::class, $this->execute($this->api->postToken(), $options));
+    }
 
-        return $this->model(Token::class, $response);
+    /**
+     * Generates a new services catalog.
+     *
+     * @param array $options {@see \OpenStack\Identity\v2\Api::postToken}
+     *
+     * @return Models\Catalog
+     */
+
+    public function generateCatalog(array $options = []): Catalog
+    {
+        return $this->model(Catalog::class, $this->execute($this->api->postToken(), $options));
+    }
+
+    public function getServiceUrl(Catalog $catalog, array $options = []): string
+    {
+        return $catalog->getServiceUrl(
+            $options['catalogName'],
+            $options['catalogType'],
+            $options['region'],
+            $options['urlType']
+        );
     }
 
     public function generateTokenFromCache(array $cachedToken = []): Token
     {
         return $this->model(Token::class)->populateFromArray($cachedToken);
+    }
+
+    public function generateCatalogFromCache(array $cachedCatalog = []): Catalog
+    {
+        return $this->model(Catalog::class)->populateFromArray($cachedCatalog);
     }
 
 

@@ -23,6 +23,9 @@ class Catalog extends OperatorResource implements \OpenStack\Common\Auth\Catalog
      */
     public $entries = [];
 
+    /** @var array */
+    protected $cachedCatalog;
+
     /**
      * {@inheritdoc}
      */
@@ -38,8 +41,20 @@ class Catalog extends OperatorResource implements \OpenStack\Common\Auth\Catalog
      */
     public function populateFromResponse(ResponseInterface $response): self
     {
-        $entries = Utils::jsonDecode($response)['access']['serviceCatalog'];
+        $this->cachedCatalog = Utils::jsonDecode($response)['access']['serviceCatalog'];
+        $this->populateFromArray($this->cachedCatalog);
+        return $this;
+    }
 
+    /**
+     * Populates the current resource from a data array.
+     *
+     * @param array $array
+     *
+     * @return mixed|void
+     */
+    public function populateFromArray(array $entries)
+    {
         foreach ($entries as $entry) {
             $this->entries[] = $this->model(Entry::class, $entry);
         }
@@ -66,5 +81,10 @@ class Catalog extends OperatorResource implements \OpenStack\Common\Auth\Catalog
             $region,
             $urlType
         ));
+    }
+
+    public function export(): array
+    {
+        return $this->cachedCatalog;
     }
 }
